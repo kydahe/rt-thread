@@ -51,7 +51,7 @@ typedef enum {
 /* the global of sockets list */
 static rt_slist_t _socket_list = RT_SLIST_OBJECT_INIT(_socket_list);
 
-struct at_socket *at_get_socket(int socket)
+struct at_socket *at_get_socket(int socket)//获取socket节点地址
 {
     rt_base_t level;
     rt_slist_t *node = RT_NULL;
@@ -59,14 +59,14 @@ struct at_socket *at_get_socket(int socket)
 
     level = rt_hw_interrupt_disable();
 
-    rt_slist_for_each(node, &_socket_list)
+    rt_slist_for_each(node, &_socket_list) //遍历单个列表 （当前位置，头节点）
     {
-        at_sock = rt_slist_entry(node, struct at_socket, list);
+        at_sock = rt_slist_entry(node, struct at_socket, list);//获取单个链表节点结构 （入口点，结构体类型，在这个结构中链表的名称），返回指针地址
         if (socket == at_sock->socket)
         {
             if (at_sock && at_sock->magic == AT_SOCKET_MAGIC)
             {
-                rt_hw_interrupt_enable(level);
+                rt_hw_interrupt_enable(level);//中断使能
                 return at_sock;
             }
         }
@@ -78,7 +78,7 @@ struct at_socket *at_get_socket(int socket)
 }
 
 /* get a block to the AT socket receive list*/
-static size_t at_recvpkt_put(rt_slist_t *rlist, const char *ptr, size_t length)
+static size_t at_recvpkt_put(rt_slist_t *rlist, const char *ptr, size_t length)//插入AT socket接收列表
 {
     at_recv_pkt_t pkt = RT_NULL;
 
@@ -99,7 +99,7 @@ static size_t at_recvpkt_put(rt_slist_t *rlist, const char *ptr, size_t length)
 }
 
 /* delete and free all receive buffer list */
-static int at_recvpkt_all_delete(rt_slist_t *rlist)
+static int at_recvpkt_all_delete(rt_slist_t *rlist) //删除释放全部接收缓冲区列表
 {
     at_recv_pkt_t pkt = RT_NULL;
     rt_slist_t *node = RT_NULL;
@@ -109,7 +109,7 @@ static int at_recvpkt_all_delete(rt_slist_t *rlist)
         return 0;
     }
 
-    for(node = rt_slist_first(rlist); node; node = rt_slist_next(node))
+    for(node = rt_slist_first(rlist); node; node = rt_slist_next(node)) //将节点及其缓冲区一个一个顺序释放
     {
         pkt = rt_slist_entry(node, struct at_recv_pkt, list);
         if (pkt->buff)
@@ -127,7 +127,7 @@ static int at_recvpkt_all_delete(rt_slist_t *rlist)
 }
 
 /* delete and free specified list block */
-static int at_recvpkt_node_delete(rt_slist_t *rlist, rt_slist_t *node)
+static int at_recvpkt_node_delete(rt_slist_t *rlist, rt_slist_t *node) //删除释放特定列表节点
 {
     at_recv_pkt_t pkt = RT_NULL;
 
@@ -138,7 +138,7 @@ static int at_recvpkt_node_delete(rt_slist_t *rlist, rt_slist_t *node)
 
     rt_slist_remove(rlist, node);
 
-    pkt = rt_slist_entry(node, struct at_recv_pkt, list);
+    pkt = rt_slist_entry(node, struct at_recv_pkt, list); //删除后还要将节点释放
     if (pkt->buff)
     {
         rt_free(pkt->buff);
@@ -153,7 +153,7 @@ static int at_recvpkt_node_delete(rt_slist_t *rlist, rt_slist_t *node)
 }
 
 /* get a block from AT socket receive buffer list */
-static size_t at_recvpkt_get(rt_slist_t *rlist, char *mem, size_t len)
+static size_t at_recvpkt_get(rt_slist_t *rlist, char *mem, size_t len) //从AT socket接收缓冲区列表中，获取指定大小数据
 {
     rt_slist_t *node = RT_NULL;
     at_recv_pkt_t pkt = RT_NULL;
@@ -166,11 +166,11 @@ static size_t at_recvpkt_get(rt_slist_t *rlist, char *mem, size_t len)
 
     for (node = rt_slist_first(rlist); node; node = rt_slist_next(node))
     {
-        pkt = rt_slist_entry(node, struct at_recv_pkt, list);
+        pkt = rt_slist_entry(node, struct at_recv_pkt, list); //列表中指定节点的结构体
 
-        page_pos = pkt->bfsz_totle - pkt->bfsz_index;
+        page_pos = pkt->bfsz_totle - pkt->bfsz_index; //剩余的大小？
 
-        if (page_pos >= len - content_pos)
+        if (page_pos >= len - content_pos) //剩余大小大于所想获取内容大小
         {
             memcpy((char *) mem + content_pos, pkt->buff + pkt->bfsz_index, len - content_pos);
             pkt->bfsz_index += len - content_pos;
@@ -274,7 +274,7 @@ static void at_do_event_clean(struct at_socket *sock, at_event_t event)
     }
 }
 
-static int alloc_empty_socket(rt_slist_t *l)
+static int alloc_empty_socket(rt_slist_t *l) //给链表分配一个空的socket
 {
     rt_base_t level;
     rt_slist_t *node = RT_NULL;
@@ -302,7 +302,7 @@ static int alloc_empty_socket(rt_slist_t *l)
     return idx;
 }
 
-static struct at_socket *alloc_socket_by_device(struct at_device *device)
+static struct at_socket *alloc_socket_by_device(struct at_device *device) //由设备分配socket
 {
     static rt_mutex_t at_slock = RT_NULL;
     struct at_socket *sock = RT_NULL;
@@ -312,30 +312,30 @@ static struct at_socket *alloc_socket_by_device(struct at_device *device)
     if (at_slock == RT_NULL)
     {
         /* create AT socket lock */
-        at_slock = rt_mutex_create("at_slock", RT_IPC_FLAG_FIFO);
-        if (at_slock == RT_NULL)
+        at_slock = rt_mutex_create("at_slock", RT_IPC_FLAG_FIFO); //创建RT socket lock
+        if (at_slock == RT_NULL) //没有足够的空间给socket分配lock
         {
             LOG_E("No memory for socket allocation lock!");
             return RT_NULL;
         }
     }
 
-    rt_mutex_take(at_slock, RT_WAITING_FOREVER);
+    rt_mutex_take(at_slock, RT_WAITING_FOREVER); //互斥
 
     /* find an empty at socket entry */
-    for (idx = 0; idx < device->class->socket_num && device->sockets[idx].magic; idx++);
+    for (idx = 0; idx < device->class->socket_num && device->sockets[idx].magic; idx++); //在socket入口出找到空socket，magic = 0？
 
     /* can't find an empty protocol family entry */
-    if (idx == device->class->socket_num)
+    if (idx == device->class->socket_num) //未找到magic = 0
     {
         goto __err;
     }
 
     sock = &(device->sockets[idx]);
     /* the socket descriptor is the number of sockte lists */
-    sock->socket = alloc_empty_socket(&(sock->list));
+    sock->socket = alloc_empty_socket(&(sock->list)); //在链表上分配一块空格的socket给socket
     /* the socket operations is the specify operations of the device */
-    sock->ops = device->class->socket_ops;
+    sock->ops = device->class->socket_ops; //socket的操作为设备特定操作
     /* the user-data is the at device socket descriptor */
     sock->user_data = (void *) idx;
     sock->device = (void *) device;
@@ -351,7 +351,7 @@ static struct at_socket *alloc_socket_by_device(struct at_device *device)
 
     rt_snprintf(name, RT_NAME_MAX, "%s%d", "at_skt", idx);
     /* create AT socket receive mailbox */
-    if ((sock->recv_notice = rt_sem_create(name, 0, RT_IPC_FLAG_FIFO)) == RT_NULL)
+    if ((sock->recv_notice = rt_sem_create(name, 0, RT_IPC_FLAG_FIFO)) == RT_NULL) //创建接收通知信号
     {
         LOG_E("No memory socket receive notic semaphore create.");
         goto __err;
@@ -359,7 +359,7 @@ static struct at_socket *alloc_socket_by_device(struct at_device *device)
 
     rt_snprintf(name, RT_NAME_MAX, "%s%d", "at_skt", idx);
     /* create AT socket receive ring buffer lock */
-    if((sock->recv_lock = rt_mutex_create(name, RT_IPC_FLAG_FIFO)) == RT_NULL)
+    if((sock->recv_lock = rt_mutex_create(name, RT_IPC_FLAG_FIFO)) == RT_NULL) //创建接收互斥锁
     {
         LOG_E("No memory for socket receive mutex create.");
         rt_sem_delete(sock->recv_notice);
@@ -445,30 +445,30 @@ static int free_socket(struct at_socket *sock)
 {
     if (sock->recv_notice)
     {
-        rt_sem_delete(sock->recv_notice);
+        rt_sem_delete(sock->recv_notice); //删除socket接收通知
     }
 
     if (sock->recv_lock)
     {
-        rt_mutex_delete(sock->recv_lock);
+        rt_mutex_delete(sock->recv_lock); //删除socket接收互斥锁
     }
 
     if (!rt_slist_isempty(&sock->recvpkt_list))
     {
-        at_recvpkt_all_delete(&sock->recvpkt_list);
+        at_recvpkt_all_delete(&sock->recvpkt_list); //删除接收包列表
     }
 
     /* delect socket from socket list */
-    {
+    {//将该socket从全局列表中删除，先获取位置，把该删除的删除，再重置为0（空）
         rt_base_t level;
         rt_slist_t *node = RT_NULL;
         struct at_socket *at_sock = RT_NULL;
 
         level = rt_hw_interrupt_disable();
 
-        rt_slist_for_each(node, &_socket_list)
+        rt_slist_for_each(node, &_socket_list) //遍历单一列表
         {
-            at_sock = rt_slist_entry(node, struct at_socket, list);
+            at_sock = rt_slist_entry(node, struct at_socket, list);//获取该节点在链表中的位置
             if (sock->socket == at_sock->socket)
             {
                 if (at_sock && at_sock->magic == AT_SOCKET_MAGIC)
